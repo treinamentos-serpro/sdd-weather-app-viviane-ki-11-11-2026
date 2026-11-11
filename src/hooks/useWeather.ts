@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { City, WeatherData } from '../types/weather';
 import { getWeather, searchCities, WeatherServiceError } from '../services/weatherService';
 
-export type WeatherStatus = 'idle' | 'loading' | 'success' | 'error' | 'empty';
+export type WeatherStatus = 'idle' | 'loading' | 'selecting' | 'success' | 'error' | 'empty';
 
 interface UseWeatherResult {
   status: WeatherStatus;
@@ -26,41 +26,44 @@ export function useWeather(): UseWeatherResult {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [lastCity, setLastCity] = useState<City | null>(null);
+  const requestId = useRef(0);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: search inicia o fluxo na montagem; loadWeather é estável
   const search = useCallback(async (name: string) => {
     const trimmed = name.trim();
-    setQuery(trimmed);
     if (!trimmed) return;
 
+    const request = ++requestId.current;
+    setQuery(trimmed);
+    setLastCity(null);
+    setData(null);
     setStatus('loading');
     setError(null);
     setCities([]);
     try {
       const results = await searchCities(trimmed);
-      if (results.length === 0) {
-        setStatus('empty');
-        return;
-      }
-      // Seleciona automaticamente a primeira correspondência, mas mantém a
-      // lista para o usuário trocar.
+      if (request !== requestId.current) return;
       setCities(results);
-      await loadWeather(results[0]);
+      setStatus(results.length === 0 ? 'empty' : 'selecting');
     } catch (err) {
+      if (request !== requestId.current) return;
       setStatus('error');
       setError(toMessage(err));
     }
   }, []);
 
   const loadWeather = useCallback(async (city: City) => {
+    const request = ++requestId.current;
     setStatus('loading');
     setError(null);
+    setData(null);
     setLastCity(city);
     try {
       const weather = await getWeather(city);
+      if (request !== requestId.current) return;
       setData(weather);
       setStatus('success');
     } catch (err) {
+      if (request !== requestId.current) return;
       setStatus('error');
       setError(toMessage(err));
     }

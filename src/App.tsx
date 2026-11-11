@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Unit } from './types/weather';
 import { useWeather } from './hooks/useWeather';
 import SearchBar from './components/SearchBar';
@@ -16,8 +16,19 @@ import EmptyState from './components/states/EmptyState';
  * Copilot, do briefing à entrega.
  */
 export default function App() {
-  const { status, data, error, query, search, retry } = useWeather();
+  const { status, data, cities, error, query, search, selectCity, retry } = useWeather();
   const [unit, setUnit] = useState<Unit>('celsius');
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (
+      status !== 'idle' &&
+      status !== 'loading' &&
+      (document.activeElement === document.body || document.activeElement === mainRef.current)
+    ) {
+      mainRef.current?.focus();
+    }
+  }, [status]);
 
   return (
     <div className="min-h-screen text-white">
@@ -29,14 +40,14 @@ export default function App() {
             </span>
             <span className="text-lg font-bold">WeatherView</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <SearchBar onSearch={search} disabled={status === 'loading'} />
             <UnitToggle unit={unit} onChange={setUnit} />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+      <main ref={mainRef} tabIndex={-1} className="mx-auto max-w-5xl space-y-8 px-4 py-8 focus:outline focus:outline-2 focus:outline-accent-400">
         {status === 'idle' && (
           <EmptyState
             title="Busque uma cidade para começar"
@@ -45,6 +56,27 @@ export default function App() {
         )}
 
         {status === 'loading' && <LoadingState />}
+
+        {status === 'selecting' && (
+          <section aria-labelledby="city-results-heading">
+            <h2 id="city-results-heading" className="mb-4 text-xl font-bold">
+              Selecione uma cidade
+            </h2>
+            <ul className="space-y-2">
+              {cities.map((city) => (
+                <li key={city.id}>
+                  <button
+                    type="button"
+                    onClick={() => selectCity(city)}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-400"
+                  >
+                    {[city.name, city.admin1, city.country].filter(Boolean).join(', ')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {status === 'empty' && (
           <EmptyState

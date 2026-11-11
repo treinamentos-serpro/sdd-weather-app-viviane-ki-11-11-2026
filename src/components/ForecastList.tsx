@@ -11,6 +11,7 @@ export default function ForecastList({ forecast, unit }: ForecastListProps) {
   return (
     <section aria-label="Previsão de 5 dias">
       <h2 className="mb-4 text-xl font-bold">Previsão de 5 dias</h2>
+      {forecast.length < 5 && <p className="mb-4">Previsão parcial: alguns dias estão indisponíveis.</p>}
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {forecast.map((day, index) => (
           <ForecastCard key={day.date} day={day} index={index} unit={unit} />

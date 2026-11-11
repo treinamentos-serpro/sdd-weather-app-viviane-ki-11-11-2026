@@ -14,6 +14,10 @@ interface MetricProps {
   value: string;
 }
 
+function formatMetric(value: number | null, unit: string, round = true): string {
+  return value === null ? '—' : `${round ? Math.round(value) : value} ${unit}`.trim();
+}
+
 function Metric({ icon, label, value }: MetricProps) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
@@ -51,24 +55,25 @@ export default function CurrentWeather({ city, current, unit }: CurrentWeatherPr
             </span>
           </div>
           <p className="mt-2 text-white/70">{getWeatherLabel(current.weatherCode)}</p>
+          {current.time && <p className="mt-2 text-sm text-white/70">Atualizado em {current.time.replace('T', ' ')}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Metric icon="💧" label="Umidade" value={`${Math.round(current.humidity)}%`} />
+          <Metric icon="💧" label="Umidade" value={formatMetric(current.humidity, '%').replace(' %', '%')} />
           <Metric
             icon="💨"
             label="Vento"
-            value={`${Math.round(current.windSpeed)} km/h`}
+            value={formatMetric(current.windSpeed, 'km/h')}
           />
           <Metric
             icon="🌧️"
             label="Precipitação"
-            value={`${current.precipitation} mm`}
+            value={formatMetric(current.precipitation, 'mm', false)}
           />
           <Metric
             icon="📊"
             label="Pressão"
-            value={`${Math.round(current.pressure)} hPa`}
+            value={formatMetric(current.pressure, 'hPa')}
           />
         </div>
       </div>

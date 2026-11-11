@@ -12,7 +12,7 @@ export default function SearchBar({ onSearch, disabled }: SearchBarProps) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const trimmed = value.trim();
-    if (!trimmed) return;
+    if (!trimmed || disabled) return;
     onSearch(trimmed);
   }
 
@@ -32,12 +32,12 @@ export default function SearchBar({ onSearch, disabled }: SearchBarProps) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="Buscar cidade…"
           autoComplete="off"
-          className="flex-1 bg-transparent text-white placeholder-white/40 outline-none"
+          className="min-w-0 flex-1 bg-transparent text-white placeholder-white/40 outline-none"
         />
         <button
           type="submit"
           disabled={disabled || !value.trim()}
-          className="rounded-lg bg-accent-500 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-accent-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-night-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Buscar
         </button>
