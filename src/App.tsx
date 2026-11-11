@@ -34,7 +34,7 @@ export default function App() {
             </span>
             <span className="text-lg font-bold">WeatherView</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <SearchBar onSearch={search} disabled={status === 'loading'} />
             <UnitToggle unit={unit} onChange={setUnit} />
           </div>

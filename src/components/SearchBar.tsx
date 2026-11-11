@@ -32,7 +32,7 @@ export default function SearchBar({ onSearch, disabled }: SearchBarProps) {
           onChange={(e) => setValue(e.target.value)}
           placeholder="Buscar cidade…"
           autoComplete="off"
-          className="flex-1 bg-transparent text-white placeholder-white/40 outline-none"
+          className="min-w-0 flex-1 bg-transparent text-white placeholder-white/40 outline-none"
         />
         <button
           type="submit"
