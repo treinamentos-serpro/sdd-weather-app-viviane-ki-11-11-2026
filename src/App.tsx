@@ -21,7 +21,13 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (status !== 'idle' && status !== 'loading') mainRef.current?.focus();
+    if (
+      status !== 'idle' &&
+      status !== 'loading' &&
+      (document.activeElement === document.body || document.activeElement === mainRef.current)
+    ) {
+      mainRef.current?.focus();
+    }
   }, [status]);
 
   return (

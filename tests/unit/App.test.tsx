@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import App from '../../src/App';
@@ -47,7 +47,7 @@ describe('App', () => {
 
     await user.type(screen.getByLabelText(/buscar cidade/i), 'Lisboa{Enter}');
     const cityButton = await screen.findByRole('button', { name: 'Lisboa, Lisboa, Portugal' });
-    expect(screen.getByRole('main')).toHaveFocus();
+    expect(screen.getByLabelText(/buscar cidade/i)).toHaveFocus();
     await user.click(cityButton);
     expect(await screen.findByRole('heading', { name: 'Lisboa' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveFocus();
@@ -107,5 +107,21 @@ describe('App', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Atualizado em 2026-11-11 12:00')).toBeInTheDocument();
     expect(screen.getByRole('listitem')).toHaveTextContent('—');
+  });
+
+  it('não retira o foco da busca quando o usuário digita durante o carregamento', async () => {
+    let resolveSearch!: (cities: City[]) => void;
+    vi.mocked(searchCities).mockImplementation(() => new Promise((resolve) => { resolveSearch = resolve; }));
+    const user = userEvent.setup();
+    render(<App />);
+
+    const input = screen.getByLabelText(/buscar cidade/i);
+    await user.type(input, 'Lisboa{Enter}');
+    await user.type(input, ' Portugal');
+    await act(async () => { resolveSearch([city]); });
+
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('Lisboa Portugal');
+    expect(screen.getByRole('button', { name: 'Lisboa, Lisboa, Portugal' })).toBeInTheDocument();
   });
 });

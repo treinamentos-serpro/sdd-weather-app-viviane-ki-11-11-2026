@@ -25,6 +25,7 @@ async function fetchWithTimeout<T>(url: string, failureMessage: string): Promise
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new WeatherServiceError('A requisição demorou demais. Tente novamente.');
     }
+    if (err instanceof SyntaxError) throw new WeatherServiceError(failureMessage);
     throw new WeatherServiceError('Falha de rede. Verifique sua conexão.');
   } finally {
     clearTimeout(timeout);
@@ -130,13 +131,23 @@ export async function getWeather(city: City): Promise<WeatherData> {
     `${FORECAST_URL}?${params.toString()}`,
     'Não foi possível carregar o clima. Tente novamente.',
   );
-  if (!data.current || !data.daily) {
+  if (!data?.current || !data.daily) {
+    throw new WeatherServiceError('Resposta de clima incompleta. Tente novamente.');
+  }
+
+  const current = mapCurrent(data.current);
+  const forecast = mapForecast(data.daily);
+  const hasCurrent = Object.values(current).some((value) => typeof value === 'number');
+  const hasForecast = forecast.some((day) =>
+    [day.weatherCode, day.max, day.min, day.precipitationProbability].some((value) => value !== null),
+  );
+  if (!hasCurrent && !hasForecast) {
     throw new WeatherServiceError('Resposta de clima incompleta. Tente novamente.');
   }
 
   return {
     city,
-    current: mapCurrent(data.current),
-    forecast: mapForecast(data.daily),
+    current,
+    forecast,
   };
 }

@@ -81,6 +81,11 @@ describe('weatherService', () => {
       await expect(searchCities('Seattle')).rejects.toThrow('A requisição demorou demais. Tente novamente.');
     });
 
+    it('trata JSON inválido como erro do provedor, não como erro de rede', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => { throw new SyntaxError('invalid JSON'); } }));
+      await expect(searchCities('Seattle')).rejects.toThrow('Não foi possível buscar a cidade. Tente novamente.');
+    });
+
     it('interrompe a leitura do corpo quando o prazo expira', async () => {
       vi.useFakeTimers();
       try {
@@ -142,6 +147,11 @@ describe('weatherService', () => {
     it('lança erro quando a resposta está incompleta', async () => {
       vi.stubGlobal('fetch', mockFetchOnce({ current: null, daily: null }));
       await expect(getWeather(CITY)).rejects.toBeInstanceOf(WeatherServiceError);
+    });
+
+    it('rejeita resposta sem dados meteorológicos utilizáveis', async () => {
+      vi.stubGlobal('fetch', mockFetchOnce({ current: {}, daily: {} }));
+      await expect(getWeather(CITY)).rejects.toThrow('Resposta de clima incompleta. Tente novamente.');
     });
 
     it('preserva dias disponíveis e campos ausentes como indisponíveis', async () => {
