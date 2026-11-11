@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   workflow_run:
-    workflows: ["SDD Guard"]
+    workflows: ["CI"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -27,14 +27,22 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/app/
+      - name: Preparar site do workshop e app
+        run: |
+          mkdir -p _site/app
+          cp -a docs/. _site/
+          cp -a dist/. _site/app/
+          cp -a workshop _site/workshop
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: dist
+          path: _site
 
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
