@@ -54,6 +54,14 @@ describe('weatherService', () => {
       const result = await searchCities('Seattle');
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('Seattle');
+      const url = new URL(vi.mocked(fetch).mock.calls[0][0] as string);
+      expect(url.origin + url.pathname).toBe('https://geocoding-api.open-meteo.com/v1/search');
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        name: 'Seattle',
+        count: '5',
+        language: 'pt',
+        format: 'json',
+      });
     });
 
     it('retorna vazio quando não há results', async () => {
@@ -64,6 +72,30 @@ describe('weatherService', () => {
     it('lança erro tipado em resposta não-ok', async () => {
       vi.stubGlobal('fetch', mockFetchOnce({}, false));
       await expect(searchCities('Seattle')).rejects.toBeInstanceOf(WeatherServiceError);
+    });
+
+    it('trata falhas de rede e timeout com mensagens apropriadas', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('network'))
+        .mockRejectedValueOnce(new DOMException('aborted', 'AbortError')));
+      await expect(searchCities('Seattle')).rejects.toThrow('Falha de rede. Verifique sua conexão.');
+      await expect(searchCities('Seattle')).rejects.toThrow('A requisição demorou demais. Tente novamente.');
+    });
+
+    it('interrompe a leitura do corpo quando o prazo expira', async () => {
+      vi.useFakeTimers();
+      try {
+        vi.stubGlobal('fetch', vi.fn((_url: string, options: RequestInit) => Promise.resolve({
+          ok: true,
+          json: () => new Promise((_resolve, reject) => {
+            options.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+          }),
+        })));
+        const assertion = expect(searchCities('Seattle')).rejects.toThrow('A requisição demorou demais. Tente novamente.');
+        await vi.advanceTimersByTimeAsync(10_000);
+        await assertion;
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -94,13 +126,37 @@ describe('weatherService', () => {
       const data = await getWeather(CITY);
       expect(data.current.temperature).toBe(18);
       expect(data.forecast).toHaveLength(5);
-      // precipitação nula vira 0 (resposta parcial)
-      expect(data.forecast[4].precipitationProbability).toBe(0);
+      const url = new URL(vi.mocked(fetch).mock.calls[0][0] as string);
+      expect(url.origin + url.pathname).toBe('https://api.open-meteo.com/v1/forecast');
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        latitude: '47.6',
+        longitude: '-122.33',
+        current: 'temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,precipitation,weather_code',
+        daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+        forecast_days: '5',
+        timezone: 'auto',
+      });
+      expect(data.forecast[4].precipitationProbability).toBeNull();
     });
 
     it('lança erro quando a resposta está incompleta', async () => {
       vi.stubGlobal('fetch', mockFetchOnce({ current: null, daily: null }));
       await expect(getWeather(CITY)).rejects.toBeInstanceOf(WeatherServiceError);
+    });
+
+    it('preserva dias disponíveis e campos ausentes como indisponíveis', async () => {
+      vi.stubGlobal('fetch', mockFetchOnce({
+        current: { temperature_2m: null },
+        daily: { time: ['2026-06-16'], temperature_2m_max: [20] },
+      }));
+      const data = await getWeather(CITY);
+      expect(data.current.temperature).toBeNull();
+      expect(data.forecast).toEqual([{ date: '2026-06-16', max: 20, min: null, weatherCode: null, precipitationProbability: null }]);
+    });
+
+    it('lança erro tratável quando a previsão responde com falha HTTP', async () => {
+      vi.stubGlobal('fetch', mockFetchOnce({}, false));
+      await expect(getWeather(CITY)).rejects.toThrow('Não foi possível carregar o clima. Tente novamente.');
     });
   });
 });
